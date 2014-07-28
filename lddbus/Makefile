@@ -28,7 +28,7 @@ endif
 
 
 clean:
-	rm -rf *.o *.ko *~ core .depend *.mod.c .*.cmd .tmp_versions .*.o.d
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 
 depend .depend dep:
 	$(CC) $(CFLAGS) -M *.c > .depend
