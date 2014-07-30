@@ -14,7 +14,6 @@
  *
  */
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -170,7 +169,7 @@ static int scull_seq_show(struct seq_file *s, void *v)
 	up(&dev->sem);
 	return 0;
 }
-	
+
 /*
  * Tie the sequence operators up.
  */
@@ -200,7 +199,7 @@ static struct file_operations scull_proc_ops = {
 	.llseek  = seq_lseek,
 	.release = seq_release
 };
-	
+
 
 /*
  * Actually create (and remove) the /proc file(s).
@@ -292,7 +291,7 @@ struct scull_qset *scull_follow(struct scull_dev *dev, int n)
 ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-	struct scull_dev *dev = filp->private_data; 
+	struct scull_dev *dev = filp->private_data;
 	struct scull_qset *dptr;	/* the first listitem */
 	int quantum = dev->quantum, qset = dev->qset;
 	int itemsize = quantum * qset; /* how many bytes in the listitem */
@@ -390,13 +389,13 @@ ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
  * The ioctl() implementation
  */
 
-int scull_ioctl(struct inode *inode, struct file *filp,
+long scull_ioctl(struct file *filp,
                  unsigned int cmd, unsigned long arg)
 {
 
 	int err = 0, tmp;
 	int retval = 0;
-    
+
 	/*
 	 * extract the type and number bitfields, and don't decode
 	 * wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
@@ -422,7 +421,7 @@ int scull_ioctl(struct inode *inode, struct file *filp,
 		scull_quantum = SCULL_QUANTUM;
 		scull_qset = SCULL_QSET;
 		break;
-        
+
 	  case SCULL_IOCSQUANTUM: /* Set: arg points to the value */
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
@@ -457,7 +456,7 @@ int scull_ioctl(struct inode *inode, struct file *filp,
 		tmp = scull_quantum;
 		scull_quantum = arg;
 		return tmp;
-        
+
 	  case SCULL_IOCSQSET:
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
@@ -553,7 +552,7 @@ struct file_operations scull_fops = {
 	.llseek =   scull_llseek,
 	.read =     scull_read,
 	.write =    scull_write,
-	.ioctl =    scull_ioctl,
+	.unlocked_ioctl =    scull_ioctl,
 	.open =     scull_open,
 	.release =  scull_release,
 };
@@ -601,7 +600,7 @@ void scull_cleanup_module(void)
 static void scull_setup_cdev(struct scull_dev *dev, int index)
 {
 	int err, devno = MKDEV(scull_major, scull_minor + index);
-    
+
 	cdev_init(&dev->cdev, &scull_fops);
 	dev->cdev.owner = THIS_MODULE;
 	dev->cdev.ops = &scull_fops;
@@ -634,7 +633,7 @@ int scull_init_module(void)
 		return result;
 	}
 
-        /* 
+        /*
 	 * allocate the devices -- we can't have them static, as the number
 	 * can be specified at load time
 	 */
@@ -649,7 +648,7 @@ int scull_init_module(void)
 	for (i = 0; i < scull_nr_devs; i++) {
 		scull_devices[i].quantum = scull_quantum;
 		scull_devices[i].qset = scull_qset;
-		init_MUTEX(&scull_devices[i].sem);
+        sema_init(&scull_devices[i].sem, 1);
 		scull_setup_cdev(&scull_devices[i], i);
 	}
 

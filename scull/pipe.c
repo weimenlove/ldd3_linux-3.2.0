@@ -13,10 +13,10 @@
  * we cannot take responsibility for errors or fitness for use.
  *
  */
- 
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
-
+#include <linux/sched.h>
 #include <linux/kernel.h>	/* printk(), min() */
 #include <linux/slab.h>		/* kmalloc() */
 #include <linux/fs.h>		/* everything... */
@@ -160,7 +160,7 @@ static int scull_getwritespace(struct scull_pipe *dev, struct file *filp)
 {
 	while (spacefree(dev) == 0) { /* full */
 		DEFINE_WAIT(wait);
-		
+
 		up(&dev->sem);
 		if (filp->f_flags & O_NONBLOCK)
 			return -EAGAIN;
@@ -175,7 +175,7 @@ static int scull_getwritespace(struct scull_pipe *dev, struct file *filp)
 			return -ERESTARTSYS;
 	}
 	return 0;
-}	
+}
 
 /* How much space is free? */
 static int spacefree(struct scull_pipe *dev)
@@ -316,7 +316,7 @@ struct file_operations scull_pipe_fops = {
 	.read =		scull_p_read,
 	.write =	scull_p_write,
 	.poll =		scull_p_poll,
-	.ioctl =	scull_ioctl,
+	.unlocked_ioctl =	scull_ioctl,
 	.open =		scull_p_open,
 	.release =	scull_p_release,
 	.fasync =	scull_p_fasync,
@@ -329,7 +329,7 @@ struct file_operations scull_pipe_fops = {
 static void scull_p_setup_cdev(struct scull_pipe *dev, int index)
 {
 	int err, devno = scull_p_devno + index;
-    
+
 	cdev_init(&dev->cdev, &scull_pipe_fops);
 	dev->cdev.owner = THIS_MODULE;
 	err = cdev_add (&dev->cdev, devno, 1);
@@ -338,7 +338,7 @@ static void scull_p_setup_cdev(struct scull_pipe *dev, int index)
 		printk(KERN_NOTICE "Error %d adding scullpipe%d", err, index);
 }
 
- 
+
 
 /*
  * Initialize the pipe devs; return how many we did.
@@ -362,7 +362,7 @@ int scull_p_init(dev_t firstdev)
 	for (i = 0; i < scull_p_nr_devs; i++) {
 		init_waitqueue_head(&(scull_p_devices[i].inq));
 		init_waitqueue_head(&(scull_p_devices[i].outq));
-		init_MUTEX(&scull_p_devices[i].sem);
+        sema_init(&scull_p_devices[i].sem, 1);
 		scull_p_setup_cdev(scull_p_devices + i, i);
 	}
 #ifdef SCULL_DEBUG
