@@ -100,37 +100,38 @@ struct scull_dev {
 #define TYPE(minor)	(((minor) >> 4) & 0xf)	/* high nibble */
 #define NUM(minor)	((minor) & 0xf)		/* low  nibble */
 
-
-/*
- * The different configurable parameters
- */
+#ifndef __SCULL_MAIN_C__
+#define __SCULL_MAIN_C__HEAD extern
 extern int scull_major;     /* main.c */
 extern int scull_nr_devs;
 extern int scull_quantum;
 extern int scull_qset;
-
 extern int scull_p_buffer;	/* pipe.c */
-
+#else
+#define __SCULL_MAIN_C__HEAD
+#endif
+/*
+ * The different configurable parameters
+ */
 
 /*
  * Prototypes for shared functions
  */
 
-int     scull_p_init(dev_t dev);
-void    scull_p_cleanup(void);
-int     scull_access_init(dev_t dev);
-void    scull_access_cleanup(void);
+__SCULL_MAIN_C__HEAD int     scull_p_init(dev_t dev);
+__SCULL_MAIN_C__HEAD void    scull_p_cleanup(void);
+__SCULL_MAIN_C__HEAD int     scull_access_init(dev_t dev);
+__SCULL_MAIN_C__HEAD void    scull_access_cleanup(void);
 
-int     scull_trim(struct scull_dev *dev);
+__SCULL_MAIN_C__HEAD int     scull_trim(struct scull_dev *dev);
 
-ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
+__SCULL_MAIN_C__HEAD ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
                    loff_t *f_pos);
-ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
+__SCULL_MAIN_C__HEAD ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
                     loff_t *f_pos);
-loff_t  scull_llseek(struct file *filp, loff_t off, int whence);
-long    scull_ioctl(struct file *filp,
+__SCULL_MAIN_C__HEAD loff_t  scull_llseek(struct file *filp, loff_t off, int whence);
+__SCULL_MAIN_C__HEAD long    scull_ioctl(struct file *filp,
                     unsigned int cmd, unsigned long arg);
-
 
 /*
  * Ioctl definitions

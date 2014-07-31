@@ -27,6 +27,7 @@
 #include <linux/fcntl.h>	/* O_ACCMODE */
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
+#include <linux/device.h>
 
 #include <asm/system.h>		/* cli(), *_flags */
 #include <asm/uaccess.h>	/* copy_*_user */
@@ -36,6 +37,8 @@
 /*
  * Our parameters which can be set at load time.
  */
+#undef __SCULL_MAIN_C__
+#define __SCULL_MAIN_C__
 
 int scull_major =   SCULL_MAJOR;
 int scull_minor =   0;
@@ -53,7 +56,7 @@ MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet");
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct scull_dev *scull_devices;	/* allocated in scull_init_module */
-
+static struct class *scull_class = NULL;
 
 /*
  * Empty out the scull device; must be called with the device
@@ -576,8 +579,17 @@ void scull_cleanup_module(void)
 		for (i = 0; i < scull_nr_devs; i++) {
 			scull_trim(scull_devices + i);
 			cdev_del(&scull_devices[i].cdev);
+			if(scull_class)
+			{
+				device_destroy(scull_class, devno);
+			}
 		}
 		kfree(scull_devices);
+	}
+	if(scull_class)
+	{
+		class_destroy(scull_class);
+		scull_class = NULL;
 	}
 
 #ifdef SCULL_DEBUG /* use proc only if debugging */
@@ -607,9 +619,17 @@ static void scull_setup_cdev(struct scull_dev *dev, int index)
 	err = cdev_add (&dev->cdev, devno, 1);
 	/* Fail gracefully if need be */
 	if (err)
+	{
 		printk(KERN_NOTICE "Error %d adding scull%d", err, index);
-}
+		goto cdev_add_fail;
+	}
+	device_create(scull_class, NULL, devno,
+		NULL, "scull%d", index);
 
+cdev_add_fail:
+	kobject_put(&dev->cdev.kobj);
+	return;
+}
 
 int scull_init_module(void)
 {
@@ -633,7 +653,14 @@ int scull_init_module(void)
 		return result;
 	}
 
-        /*
+	scull_class = class_create(THIS_MODULE, "scull_cls");
+	if(IS_ERR(scull_class))
+	{
+		result = PTR_ERR(scull_class);
+		goto fail;
+	}
+
+    /*
 	 * allocate the devices -- we can't have them static, as the number
 	 * can be specified at load time
 	 */
@@ -663,7 +690,7 @@ int scull_init_module(void)
 
 	return 0; /* succeed */
 
-  fail:
+fail:
 	scull_cleanup_module();
 	return result;
 }
